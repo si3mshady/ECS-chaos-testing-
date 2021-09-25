@@ -1,0 +1,45 @@
+{
+  "name": "chaos-lambda",
+  "version": "2.0.2",
+  "description": "Chaos Lambda is a small tool for testing resiliency and recoverability of AWS-based architectures. It's a serverless implementation of Netflix Chaos Monkey.",
+  "main": "./bin/chaos-lambda",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shoreditch-ops/chaos-lambda.git"
+  },
+  "keywords": [
+    "aws",
+    "chaos",
+    "reliability",
+    "chaos",
+    "monkey"
+  ],
+  "author": "Hassy Veldstra <h@artillery.io>",
+  "license": "MPL-2.0",
+  "preferGlobal": true,
+  "bin": {
+    "chaos-lambda": "./bin/chaos-lambda"
+  },
+  "bugs": {
+    "url": "https://github.com/shoreditch-ops/chaos-lambda/issues"
+  },
+  "homepage": "https://github.com/shoreditch-ops/chaos-lambda#readme",
+  "dependencies": {
+    "archiver": "^1.0.0",
+    "async": "1.5.2",
+    "aws-sdk": "2.2.40",
+    "axios": "^0.21.4",
+    "chalk": "1.1.1",
+    "child_process": "^1.0.2",
+    "debug": "2.2.0",
+    "express": "^4.17.1",
+    "failure-lambda": "^0.4.2",
+    "lodash": "4.6.1",
+    "request-promise": "^3.0.0",
+    "tmp": "0.0.28",
+    "yargs": "4.2.0"
+  }
+}
