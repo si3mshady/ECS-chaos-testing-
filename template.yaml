@@ -1,0 +1,196 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  chaos testing
+
+Parameters:
+  VPC: 
+    Type: String
+    Default: vpc-0db0c13e7a3d5d4e2
+  Subnet1: 
+    Type: String
+    Default: subnet-01ae44e8aecc0d509
+  Subnet2: 
+    Type: String
+    Default: subnet-0a6e6bcc60f05ec9e
+  SecurityGroup: 
+    Type: String
+    Default: sg-0948dc9b6e1408acb
+  AWSACCESSKEYID: 
+    Type: String
+    Default: AKIAVWNM5IW6HL57IZPE
+  AWSSECRETACCESSKEY: 
+    Type: String
+    Default: 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
+  AWSDEFAULTREGION: 
+    Type: String
+    Default: us-east-1
+
+
+Conditions:
+  SandboxRegionUS: !Equals [!Ref 'AWS::Region', 'us-east-1']
+  SandboxRegionCanada: !Equals [!Ref 'AWS::Region', 'ca-central-1']
+
+  DevEnvironment: !Or
+    - !Condition SandboxRegionCanada
+    - !Condition SandboxRegionUS
+   
+
+Resources:
+  ChaosCluster:
+    Condition: DevEnvironment
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: chaos-cluster
+
+  ChaosALB:
+    Condition: DevEnvironment
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '90'
+      IpAddressType: ipv4     
+      Name: chaos-alb   
+      SecurityGroups: 
+        - !Ref SecurityGroup  #allports 
+      Subnets: 
+        - !Ref Subnet1     #us-east-1a  10.0.1.0/25 subnet-01ae44e8aecc0d509, subnet-0a6e6bcc60f05ec9e
+        - !Ref Subnet2     # #us-east-1c 10.0.0.0/24
+      Type: application
+
+
+  ChaosTaskDef:
+    Condition: DevEnvironment
+    Type: AWS::ECS::TaskDefinition            
+    Properties:             
+      ExecutionRoleArn:  !Ref EcsExecRole
+      TaskRoleArn: !Ref ContainerTaskRole
+      Cpu: 1024
+      Memory: 2048
+      NetworkMode: awsvpc
+      
+      ContainerDefinitions:
+        - Name: ChaosContainer
+          Environment: 
+            -   Name: AWS_ACCESS_KEY_ID
+                Value: !Ref AWSACCESSKEYID
+
+            -   Name: AWS_SECRET_ACCESS_KEY
+                Value: !Ref AWSSECRETACCESSKEY
+
+            -   Name: AWS_DEFAULT_REGION
+                Value: us-east-1
+        
+
+
+          Essential: 'true'
+          Image: "si3mshady/loadtest"
+          Cpu: 1024
+          Memory : 2048
+          PortMappings: 
+            - ContainerPort: 5000             
+              HostPort: 5000
+              Protocol: tcp          
+      RequiresCompatibilities:
+        - "FARGATE"
+
+  ChaosClusterService:
+    Condition: DevEnvironment
+    Type: AWS::ECS::Service
+    DependsOn: BackendRule
+    
+    Properties:
+      ServiceName: chaosTesting
+      DesiredCount: 3
+      LoadBalancers:
+        - ContainerPort: 5000
+          ContainerName: ChaosContainer
+          TargetGroupArn: !Ref TGNode
+
+      Cluster: 
+        Ref: ChaosCluster
+      TaskDefinition: !Ref ChaosTaskDef 
+      LaunchType:  FARGATE  #FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref Subnet1
+          SecurityGroups:  
+            - !Ref  SecurityGroup
+  EcsExecRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: EcsExecRoleBlogsite
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+  # A role for the containers
+  
+  ContainerTaskRole:
+    Condition: DevEnvironment
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ChaosTaskRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+ 
+  TGNode:
+      Condition: DevEnvironment
+      Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      Properties:
+        HealthCheckIntervalSeconds: 6
+        HealthCheckPath: /health
+        HealthCheckProtocol: HTTP
+        HealthCheckTimeoutSeconds: 5
+        HealthyThresholdCount: 2
+        TargetType: ip
+        Name: tgChaosCluster
+        Port: 5000
+        Protocol: HTTP
+        UnhealthyThresholdCount: 2
+        VpcId: !Ref VPC
+
+
+  NodeListener:
+    Condition: DevEnvironment
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref  TGNode
+      LoadBalancerArn: !Ref ChaosALB
+      Port: '5000'
+      Protocol: HTTP
+
+  BackendRule:
+    Condition: DevEnvironment
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties: 
+      Actions: 
+          - TargetGroupArn: !Ref  TGNode
+            Type: 'forward'
+      Conditions: 
+        - Field: path-pattern
+          Values: 
+            - '*'
+      ListenerArn: !Ref  NodeListener
+      Priority: 1
+
+
+# sam deploy --guided --capabilities CAPABILITY_NAMED_IAM
+
+# subnet-01ae44e8aecc0d509, subnet-0a6e6bcc60f05ec9e
+# sg-0948dc9b6e1408acb
+# chaos-alb-756371586.us-east-1.elb.amazonaws.com:5000/stop-task/cadc1434732e4e9ca35a182dcaa80a00/chaos-cluster
+# vpc-0db0c13e7a3d5d4e2
