@@ -38,6 +38,7 @@
     "express": "^4.17.1",
     "failure-lambda": "^0.4.2",
     "lodash": "4.6.1",
+    "newrelic": "^8.4.0",
     "request-promise": "^3.0.0",
     "tmp": "0.0.28",
     "yargs": "4.2.0"

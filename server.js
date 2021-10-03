@@ -1,7 +1,8 @@
+require('newrelic');
 let AWS =  require("aws-sdk");
 const  exec = require('child_process').exec;
 const express =  require('express');
-// const axios = require('axios')
+
 
 const app = express();
 app.use(express.json())
@@ -11,20 +12,20 @@ app.get('/health', (req,res) => {
             
         const response = { message: "healthy" }           
          
-          return  res.status(200).json(response)
-          
+          return  res.status(200).json(response)          
 
 })
 
 
 app.get('/stress-cpu/:id', (req,res) => {  
+    console.log(req)
 
     const count = parseInt(req.params.id, 10)
     exec(`stress-ng --cpu ${count} --vm  ${count} -t ${count * 6}s`,{maxBuffer: 1024 * 500}, (err,stdout,_) => {
         if (!err) {
             
             const response = { message: "load test completed"  }
-e
+
                 return  res.status(200).json(response)
             } 
             

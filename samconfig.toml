@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "nr-vpc"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1lywncbsapw2i"
+s3_prefix = "nr-vpc"
+region = "us-east-1"
+capabilities = "CAPABILITY_NAMED_IAM"
+parameter_overrides = "VPC=\"vpc-0b436e116e8fc1c04\" Subnet1=\"subnet-05e4f507980ad2dc9\" Subnet2=\"subnet-0b822c7dbf1b71202\" SecurityGroup=\"sg-04ec0399c328e4189\" AWSACCESSKEYID=\"AKIAREHHM4R7HMY5BC42\" AWSSECRETACCESSKEY=\"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\" AWSDEFAULTREGION=\"us-east-1\""
+image_repositories = []
